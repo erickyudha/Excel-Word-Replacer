@@ -1,34 +1,50 @@
 import os
-import pandas as pd
+import re
+from openpyxl import load_workbook
 
-# Define your dictionary for replacement
-word_dict = {
-
+# Dictionary for word replacement, reordered to prevent partial replacements
+word_replacement_dict = {
+    "Fasilkom-TI": "FN8",
+    "FMIPA": "FN16",
+    "F Hut": "FN6",
+    "FFarm": "FN14",
+    "FKG": "FN17",
+    "FIB": "FN10",
+    "FISIP": "FN1",
+    "FKEP": "FN11",
+    "FKM": "FN13",
+    "FK": "FN4",
+    "FPsi": "FN12",
+    "FP": "FN5",
+    "FEB": "FN3",
+    "FV": "FN2",
+    "FH": "FN7",
+    "FT": "FN15",
+    "SPS": "FN9",
 }
 
-# Function to replace words in a given text based on the dictionary
-def replace_words(text, word_dict):
-    for key, value in word_dict.items():
-        text = text.replace(key, value)
-    return text
+# Regular expression pattern to match whole words
+word_pattern = re.compile(r'\b(' + '|'.join(re.escape(word) for word in word_replacement_dict.keys()) + r')\b')
 
-# Function to process each Excel file in the folder
-def process_excel_files(input_folder, output_folder):
-    for filename in os.listdir(input_folder):
-        if filename.endswith(".xlsx"):
-            file_path = os.path.join(input_folder, filename)
-            output_path = os.path.join(output_folder, filename)
-            df = pd.read_excel(file_path)
-            # Replace words in all columns
-            df = df.applymap(lambda x: replace_words(str(x), word_dict))
-            df.to_excel(output_path, index=False)
+def replace_words_in_cell(cell_value):
+    # Replace whole words based on the dictionary
+    return word_pattern.sub(lambda x: word_replacement_dict[x.group()], cell_value)
 
-# Get the directory of the script
-script_dir = os.path.dirname(os.path.realpath(__file__))
+def process_excel_files(folder_path):
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith(".xlsx"):
+            file_path = os.path.join(folder_path, file_name)
+            print("Processing file:", file_name)
+            wb = load_workbook(file_path)
+            for sheet_name in wb.sheetnames:
+                sheet = wb[sheet_name]
+                for row in sheet.iter_rows():
+                    for cell in row:
+                        if cell.value is not None and isinstance(cell.value, str):
+                            cell.value = replace_words_in_cell(cell.value)
+            wb.save(file_path)
+            print("File", file_name, "processed successfully.")
 
-# Define input and output folder paths
-input_folder = os.path.join(script_dir, "input")
-output_folder = os.path.join(script_dir, "output")
-
-# Call the function to process Excel files
-process_excel_files(input_folder, output_folder)
+# Provide the folder path containing Excel files
+folder_path = "./output"
+process_excel_files(folder_path)
